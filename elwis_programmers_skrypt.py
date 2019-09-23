@@ -5,6 +5,31 @@ import cgi
 from dateutil import parser
 from datetime import date
 from datetime import datetime
+import sys
+
+global AutoStartDataFileName
+global file_limits_per_user
+global file_with_messages
+global file_error_logs
+global limit_msg_per_time
+global max_total_msg
+global max_msg_per_usr
+global actual_date
+today_date_for_logs = date.today()
+
+max_msg_per_usr = 5
+
+file_limits_per_user = "limits_per_user_" + str(today_date_for_logs) + ".txt"
+AutoStartDataFileName = "AutoStartData_" + str(today_date_for_logs) + ".txt"
+file_with_messages = "messages_body_" + str(today_date_for_logs) + ".txt"
+file_error_logs = "error_logs_" + str(today_date_for_logs) + ".txt"
+limit_msg_per_time = parser.parse("0:00:10.898005")  # 10 sekund
+max_total_msg = 400
+actual_date = (datetime.now())
+
+global user_ip_filter  # w tej zmiennej bedzie przypisane ip user
+user_ip_filter = "192.168.1.1"
+
 
 class users_filtr():
     def __init__(self, value_field_to_filtr):
@@ -35,6 +60,9 @@ class users_filtr():
             if i["user_id"] == user_ip:
                 value_exist = True
                 i["amount_msg"] = i["amount_msg"] + 1
+                if i["amount_msg"] > max_msg_per_usr:
+                    error_logs_writter(datetime.now().strftime("%H:%M:%S") + " przekroczono limit wiadomosci per user ip: " + str(i["amount_msg"]))
+                    sys.exit()
             if value_exist == True:
                 return whole_columns
             else:
@@ -47,7 +75,6 @@ class users_filtr():
 class AutoStart:
     def __init__(self):
 
-        actual_date= (datetime.now())
         if os.path.isfile(AutoStartDataFileName) == True:
             with open(AutoStartDataFileName, 'r+') as file_read_write:
                 whole_columns = json.load(file_read_write)
@@ -69,7 +96,6 @@ class AutoStart:
             addition_dates = (datetime.min + addition_dates).time()
             if str(addition_dates) > str(limit_msg_per_time).split(" ")[1]:
                 msg_counter = int(msg_counter) + 1
-                #file_read_write.seek(0)
                 str_to_write_auto_start_file = {
                     "amount_msg": msg_counter,
                     "actual_date_json": str(actual_date)
@@ -125,34 +151,20 @@ class error_logs_writter:
         f = open(file_error_logs, "a")
         f.write(body+'\n')
 
+
+
 if __name__ == "__main__":
-    
-    global AutoStartDataFileName
-    global file_limits_per_user
-    global file_with_messages
-    global file_error_logs
-    global limit_msg_per_time
-    global max_total_msg
-    
-    today_date_for_logs = date.today()
 
-    file_limits_per_user = "limits_per_user_"+str(today_date_for_logs)+".txt"
-    AutoStartDataFileName="AutoStartData_"+str(today_date_for_logs)+".txt"
-    file_with_messages = "messages_body_"+str(today_date_for_logs)+".txt"
-    file_error_logs = "error_logs_"+str(today_date_for_logs)+".txt"
-    limit_msg_per_time = parser.parse("0:00:10.898005") #10 sekund
-    max_total_msg = 400
-
+    #tutaj wykonuje sie filtrownaie per ip
+    users_filtr(user_ip_filter)
     kl = AutoStart()
 
 
-    with open('jsons.txt') as json_file:  
+    with open('jsons.txt') as json_file:
         json_receive = json.load(json_file)
 
     try:
         p1 = WriteToCsvFile(json_receive["tittle"], json_receive["email"], json_receive["content"])
 
     except Exception as e:
-
         error_logs_writter(str(datetime.now().strftime("%H:%M:%S")) + str(e))
-
