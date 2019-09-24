@@ -6,3 +6,4 @@ Limits as global variables in script
 
 Variable IP Filter is now static (user_ip_filter = "192.168.1.1")
 
+For testing put all files at same directory and then run: "pytest -v"
